@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Dict, List, Mapping, Optional
 
 from .error import BaseError
-from .key_type import BLS12381G2, ED25519, P256, X25519, KeyType
+from .key_type import BLS12381G2, ED25519, P256, PKCS11_P256, X25519, KeyType
 
 
 class HolderDefinedDid(Enum):
@@ -78,7 +78,7 @@ KEY = DIDMethod(
 )
 WEB = DIDMethod(
     name="web",
-    key_types=[ED25519, BLS12381G2],
+    key_types=[ED25519, BLS12381G2, PKCS11_P256],
     rotation=True,
     holder_defined_did=HolderDefinedDid.REQUIRED,
 )

@@ -49,6 +49,7 @@ P256: KeyType = KeyType("p256", "p256-pub", b"\x80\x24", "ES256")
 BLS12381G1: KeyType = KeyType("bls12381g1", "bls12_381-g1-pub", b"\xea\x01", None)
 BLS12381G2: KeyType = KeyType("bls12381g2", "bls12_381-g2-pub", b"\xeb\x01", None)
 BLS12381G1G2: KeyType = KeyType("bls12381g1g2", "bls12_381-g1g2-pub", b"\xee\x01", None)
+PKCS11_P256: KeyType = KeyType("pkcs11_p256", "p256-pub", b"\x80\x24", "ES256")
 
 
 class KeyTypes:
@@ -63,6 +64,7 @@ class KeyTypes:
             BLS12381G1.key_type: BLS12381G1,
             BLS12381G2.key_type: BLS12381G2,
             BLS12381G1G2.key_type: BLS12381G1G2,
+            PKCS11_P256.key_type: PKCS11_P256,
         }
         self._name_registry: dict[str, KeyType] = {
             ED25519.multicodec_name: ED25519,

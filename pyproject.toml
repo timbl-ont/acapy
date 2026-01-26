@@ -59,6 +59,9 @@ indy-credx = "~1.1.1"
 # askar
 aries-askar = ">=0.4.3"
 
+# pkcs11
+python-pkcs11 = "^0.7.0"
+
 # indy 
 indy-vdr = "~0.4.0"
 

@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import uuid
 from typing import List, Optional, Sequence, Tuple, Union, cast
 
 from aries_askar import AskarError, AskarErrorCode, Entry, Key, KeyAlg, SeedMethod
@@ -20,8 +21,9 @@ from .did_info import INVITATION_REUSE_KEY
 from .did_method import INDY, SOV, DIDMethod, DIDMethods
 from .did_parameters_validation import DIDParametersValidation
 from .error import WalletDuplicateError, WalletError, WalletNotFoundError
-from .key_type import BLS12381G2, ED25519, P256, X25519, KeyType, KeyTypes
+from .key_type import BLS12381G2, ED25519, P256, PKCS11_P256, X25519, KeyType, KeyTypes
 from .keys.manager import verkey_to_multikey
+from .pkcs11 import PKCS11Signer
 from .util import b58_to_bytes, bytes_to_b58
 
 CATEGORY_DID = "did"
@@ -47,6 +49,24 @@ class AskarWallet(BaseWallet):
     def session(self) -> AskarProfileSession:
         """Accessor for Askar profile session instance."""
         return self._session
+
+    @property
+    def pkcs11_signer(self) -> Optional[PKCS11Signer]:
+        """Accessor for PKCS11 signer."""
+        settings = self._session.context.settings
+        lib_path = settings.get("pkcs11.lib")
+        token_label = settings.get("pkcs11.token")
+        pin = settings.get("pkcs11.pin")
+        slot_index = settings.get("pkcs11.slot")
+
+        if lib_path and token_label:
+            return PKCS11Signer(
+                lib_path=lib_path,
+                token_label=token_label,
+                pin=pin,
+                slot_index=slot_index,
+            )
+        return None
 
     async def create_signing_key(
         self,
@@ -98,7 +118,23 @@ class AskarWallet(BaseWallet):
             metadata = {}
 
         try:
-            keypair = _create_keypair(key_type, seed)
+            if key_type == PKCS11_P256:
+                if not self.pkcs11_signer:
+                    raise WalletError("PKCS11 signer not configured")
+                
+                identifier = seed or metadata.get("pkcs11_label") or kid
+                if not identifier:
+                    identifier = str(uuid.uuid4())
+                
+                try:
+                    public_bytes = self.pkcs11_signer.get_public_key_bytes(identifier)
+                except WalletError:
+                    public_bytes = self.pkcs11_signer.create_key(identifier)
+
+                keypair = Key.from_public_bytes(KeyAlg.P256, public_bytes)
+                metadata["pkcs11_label"] = identifier
+            else:
+                keypair = _create_keypair(key_type, seed)
             verkey = bytes_to_b58(keypair.get_public_bytes())
             tags = {
                 "multikey": verkey_to_multikey(verkey, key_type.key_type),
@@ -318,7 +354,20 @@ class AskarWallet(BaseWallet):
             metadata = {}
 
         try:
-            keypair = _create_keypair(key_type, seed)
+            if key_type == PKCS11_P256:
+                if not self.pkcs11_signer:
+                    raise WalletError("PKCS11 signer not configured")
+                
+                identifier = seed or metadata.get("pkcs11_label") or did
+                if not identifier:
+                    raise WalletError("PKCS11 key creation requires seed (label) or metadata 'pkcs11_label'")
+
+                public_bytes = self.pkcs11_signer.get_public_key_bytes(identifier)
+
+                keypair = Key.from_public_bytes(KeyAlg.P256, public_bytes)
+                metadata["pkcs11_label"] = identifier
+            else:
+                keypair = _create_keypair(key_type, seed)
             verkey_bytes = keypair.get_public_bytes()
             verkey = bytes_to_b58(verkey_bytes)
 
@@ -816,6 +865,27 @@ class AskarWallet(BaseWallet):
                     secret=key.get_secret_bytes(),
                     key_type=BLS12381G2,
                 )
+
+            elif key.algorithm == KeyAlg.P256 and self.pkcs11_signer:
+                # Check if this is a PKCS11 key
+                # We can check metadata, or just try to sign if we have a label?
+                # The 'key' object from `fetch_key` was created/inserted.
+                # If it was inserted with just public key (PKCS11 case), it doesn't have secret bytes.
+                # But Askar Key object might not expose "has_secret".
+                # However, if we inserted it as public-only, calling `sign_message` on it might fail or work if Askar supported it?
+                # Askar P256 software keys support sign_message.
+                # If we only have public key in Askar, `key.sign_message` will likely fail or raise error?
+                
+                # We need to know if we should use PKCS11.
+                # Fetch metadata to see if we have a label.
+                metadata = json.loads(keypair.metadata or "{}")
+                identifier = metadata.get("pkcs11_label")
+                
+                if identifier:
+                     return self.pkcs11_signer.sign(message, identifier)
+                
+                # Fallback to normal Askar signing (software key)
+                return key.sign_message(message)
 
             else:
                 return key.sign_message(message)

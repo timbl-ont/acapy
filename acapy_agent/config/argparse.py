@@ -635,6 +635,57 @@ class DiscoverFeaturesGroup(ArgumentGroup):
         return settings
 
 
+@group(CAT_START)
+class PKCS11Group(ArgumentGroup):
+    """PKCS11 settings."""
+
+    GROUP_NAME = "PKCS11"
+
+    def add_arguments(self, parser: ArgumentParser):
+        """Add PKCS11 command line arguments to the parser."""
+        parser.add_argument(
+            "--pkcs11-lib",
+            type=str,
+            metavar="<lib>",
+            env_var="ACAPY_PKCS11_LIB",
+            help="Path to the PKCS#11 library.",
+        )
+        parser.add_argument(
+            "--pkcs11-pin",
+            type=str,
+            metavar="<pin>",
+            env_var="ACAPY_PKCS11_PIN",
+            help="User PIN for the PKCS#11 token.",
+        )
+        parser.add_argument(
+            "--pkcs11-token",
+            type=str,
+            metavar="<token>",
+            env_var="ACAPY_PKCS11_TOKEN",
+            help="Token label for the PKCS#11 token.",
+        )
+        parser.add_argument(
+            "--pkcs11-slot",
+            type=int,
+            metavar="<slot>",
+            env_var="ACAPY_PKCS11_SLOT",
+            help="Slot index for the PKCS#11 token.",
+        )
+
+    def get_settings(self, args: Namespace) -> dict:
+        """Extract PKCS11 settings."""
+        settings = {}
+        if args.pkcs11_lib:
+            settings["pkcs11.lib"] = args.pkcs11_lib
+        if args.pkcs11_pin:
+            settings["pkcs11.pin"] = args.pkcs11_pin
+        if args.pkcs11_token:
+            settings["pkcs11.token"] = args.pkcs11_token
+        if args.pkcs11_slot:
+            settings["pkcs11.slot"] = args.pkcs11_slot
+        return settings
+
+
 @group(CAT_PROVISION, CAT_START)
 class GeneralGroup(ArgumentGroup):
     """General settings."""

@@ -9,7 +9,7 @@ from ...resolver.did_resolver import DIDResolver
 from ...utils.multiformats import multibase
 from ...wallet.error import WalletError, WalletNotFoundError
 from ..base import BaseWallet
-from ..key_type import BLS12381G2, ED25519, P256, KeyType
+from ..key_type import BLS12381G2, ED25519, P256, PKCS11_P256, KeyType
 from ..util import b58_to_bytes, bytes_to_b58
 
 LOGGER = logging.getLogger(__name__)
@@ -38,6 +38,12 @@ ALG_MAPPINGS = {
         "key_type": BLS12381G2,
         "multikey_prefix": ("zUC7", "zUC6"),
         "prefix_hex": "eb01",
+        "prefix_length": 2,
+    },
+    "pkcs11_p256": {
+        "key_type": PKCS11_P256,
+        "multikey_prefix": "zDn",
+        "prefix_hex": "8024",
         "prefix_length": 2,
     },
 }

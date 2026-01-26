@@ -82,7 +82,7 @@ from .did_method import (
 )
 from .did_posture import DIDPosture
 from .error import WalletError, WalletNotFoundError
-from .key_type import BLS12381G2, ED25519, P256, KeyTypes
+from .key_type import BLS12381G2, ED25519, P256, PKCS11_P256, KeyTypes
 from .singletons import UpgradeInProgressSingleton
 from .util import EVENT_LISTENER_PATTERN
 
@@ -132,7 +132,14 @@ class DIDSchema(OpenAPISchema):
     )
     key_type = fields.Str(
         required=True,
-        validate=validate.OneOf([ED25519.key_type, BLS12381G2.key_type, P256.key_type]),
+        validate=validate.OneOf(
+            [
+                ED25519.key_type,
+                BLS12381G2.key_type,
+                P256.key_type,
+                PKCS11_P256.key_type,
+            ]
+        ),
         metadata={
             "description": "Key type associated with the DID",
             "example": ED25519.key_type,
@@ -332,7 +339,14 @@ class DIDListQueryStringSchema(OpenAPISchema):
     )
     key_type = fields.Str(
         required=False,
-        validate=validate.OneOf([ED25519.key_type, BLS12381G2.key_type, P256.key_type]),
+        validate=validate.OneOf(
+            [
+                ED25519.key_type,
+                BLS12381G2.key_type,
+                P256.key_type,
+                PKCS11_P256.key_type,
+            ]
+        ),
         metadata={"example": ED25519.key_type, "description": "Key type to query for."},
     )
 
@@ -352,7 +366,14 @@ class DIDCreateOptionsSchema(OpenAPISchema):
 
     key_type = fields.Str(
         required=True,
-        validate=validate.OneOf([ED25519.key_type, BLS12381G2.key_type, P256.key_type]),
+        validate=validate.OneOf(
+            [
+                ED25519.key_type,
+                BLS12381G2.key_type,
+                P256.key_type,
+                PKCS11_P256.key_type,
+            ]
+        ),
         metadata={
             "example": ED25519.key_type,
             "description": (
@@ -409,6 +430,11 @@ class DIDCreateSchema(OpenAPISchema):
             ),
             "example": "000000000000000000000000Trustee1",
         },
+    )
+
+    metadata = fields.Dict(
+        required=False,
+        metadata={"description": "Additional metadata associated with the DID"},
     )
 
 
@@ -674,7 +700,11 @@ async def wallet_create_did(request: web.BaseRequest):
                 )
             else:
                 info = await wallet.create_local_did(
-                    method=method, key_type=key_type, seed=seed, did=did
+                    method=method,
+                    key_type=key_type,
+                    seed=seed,
+                    did=did,
+                    metadata=body.get("metadata"),
                 )
 
         except WalletError as err:

@@ -80,6 +80,29 @@ RUN apt-get update && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/* /usr/share/doc/*
 
+# Install BouncyHsm PKCS11 driver
+# Build BouncyHsm PKCS11 driver from source
+RUN git clone https://github.com/harrison314/BouncyHsm.git /tmp/BouncyHsm && \
+    cd /tmp/BouncyHsm && \
+    git checkout v1.5.0 && \
+    cd build_linux && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+    make CC=gcc ARCH_FLAGS="-march=armv8-a"; \
+    else \
+    make CC=gcc ARCH_FLAGS="-m64"; \
+    fi && \
+    mv *.so /usr/lib/BouncyHsm.Pkcs11.so && \
+    chmod +x /usr/lib/BouncyHsm.Pkcs11.so && \
+    rm -rf /tmp/BouncyHsm
+
+ENV BOUNCY_HSM_CFG_STRING="Server=192.168.1.136; Port=8765;" \
+    BOUNCY_HSM_HTTP="http://192.168.1.136:8080" \
+    ACAPY_PKCS11_LIB="/usr/lib/BouncyHsm.Pkcs11.so" \
+    ACAPY_PKCS11_PIN="1234" \
+    ACAPY_PKCS11_TOKEN="token" \
+    ACAPY_PKCS11_TOKEN="token"
+
 WORKDIR $HOME
 
 # Add local binaries and aliases to path
@@ -111,6 +134,6 @@ RUN acapy_agent_package=$(find ./ -name "acapy_agent*.whl" | head -n 1) && \
     echo "Installing ${acapy_agent_package} ..." && \
     pip install --no-cache-dir --find-links=. ${acapy_agent_package}${acapy_reqs} && \
     rm acapy_agent*.whl && \
-    chmod +rx $(python -m site --user-site) $HOME/.local
+    chmod +rx $(python3 -m site --user-site) $HOME/.local
 
 ENTRYPOINT ["aca-py"]
