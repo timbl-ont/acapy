@@ -358,11 +358,16 @@ class AskarWallet(BaseWallet):
                 if not self.pkcs11_signer:
                     raise WalletError("PKCS11 signer not configured")
                 
-                identifier = seed or metadata.get("pkcs11_label") or did
+                identifier = seed or metadata.get("pkcs11_label") or metadata.get("kid") or did
                 if not identifier:
                     raise WalletError("PKCS11 key creation requires seed (label) or metadata 'pkcs11_label'")
 
-                public_bytes = self.pkcs11_signer.get_public_key_bytes(identifier)
+                try:
+                    public_bytes = self.pkcs11_signer.get_public_key_bytes(identifier)
+                except WalletError:
+                    # Key doesn't exist, create it
+                    LOGGER.info(f"Creating PKCS#11 key with label: {identifier}")
+                    public_bytes = self.pkcs11_signer.create_key(identifier)
 
                 keypair = Key.from_public_bytes(KeyAlg.P256, public_bytes)
                 metadata["pkcs11_label"] = identifier
@@ -375,13 +380,45 @@ class AskarWallet(BaseWallet):
                 method, key_type, verkey_bytes, did
             )
 
+            if "kid" in metadata:
+                tags = {"kid": metadata["kid"]}
+            else:
+                tags = None
+
             try:
                 await self._session.handle.insert_key(
-                    verkey, keypair, metadata=json.dumps(metadata)
+                    verkey, keypair, metadata=json.dumps(metadata), tags=tags
                 )
             except AskarError as err:
                 if err.code == AskarErrorCode.DUPLICATE:
-                    # update metadata?
+                    if tags:
+                       # If key exists to update tags we need to fetch and replace
+                       # But insert_key failed, so we know it exists.
+                       # We can't easily "update tags" on a key without replacing it or using separate call?
+                       # Askar doesn't have explicit "set_tags".
+                       # We have access to _session.handle
+                       # Let's try to fetch and verify/update.
+                       
+                       # Actually, Wallet.assign_kid_to_key uses fetch and replace.
+                       # We can reuse that logic or implement similar here.
+                       # Let's keep it simple: if tags are provided, force update them.
+                       
+                       # Fetch check
+                       key_item = await self._session.handle.fetch_key(verkey)
+                       if key_item and tags:
+                           current_tags = key_item.tags or {}
+                           if "kid" in tags and current_tags.get("kid") != tags["kid"]:
+                               # Update the tags
+                               # We need to re-insert or replace. Askar keys are immutable?
+                               # NO, we can just update tags usually via replace or similar?
+                               # wait, insert_key overrides? No.
+                               
+                               # Looking at assign_kid_to_key (not shown but knowing askar_wrapper):
+                               # It likely does fetch and replace.
+                               
+                               # Let's call self.assign_kid_to_key if kid is present
+                               if "kid" in tags:
+                                   await self.assign_kid_to_key(verkey, tags["kid"])
                     pass
                 else:
                     raise WalletError("Error inserting key") from err
