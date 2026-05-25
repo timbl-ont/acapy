@@ -1,6 +1,7 @@
 """Aries-Askar implementation of BaseWallet interface."""
 
 import asyncio
+import hashlib
 import json
 import logging
 import uuid
@@ -18,7 +19,7 @@ from ..storage.base import StorageDuplicateError, StorageNotFoundError, StorageR
 from .base import BaseWallet, DIDInfo, KeyInfo
 from .crypto import sign_message, validate_seed, verify_signed_message
 from .did_info import INVITATION_REUSE_KEY
-from .did_method import INDY, SOV, DIDMethod, DIDMethods
+from .did_method import INDY, SOV, X509, DIDMethod, DIDMethods
 from .did_parameters_validation import DIDParametersValidation
 from .error import WalletDuplicateError, WalletError, WalletNotFoundError
 from .key_type import BLS12381G2, ED25519, P256, PKCS11_P256, X25519, KeyType, KeyTypes
@@ -31,6 +32,11 @@ CATEGORY_CONFIG = "config"
 RECORD_NAME_PUBLIC_DID = "default_public_did"
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _derive_x509_kid(public_key_bytes: bytes) -> str:
+    """Derive deterministic x509 kid from public key bytes."""
+    return hashlib.sha256(public_key_bytes).hexdigest()
 
 
 class AskarWallet(BaseWallet):
@@ -58,6 +64,7 @@ class AskarWallet(BaseWallet):
         token_label = settings.get("pkcs11.token")
         pin = settings.get("pkcs11.pin")
         slot_index = settings.get("pkcs11.slot")
+        iaca_write_back = settings.get("pkcs11.iaca_write_back", False)
 
         if lib_path and token_label:
             return PKCS11Signer(
@@ -65,6 +72,7 @@ class AskarWallet(BaseWallet):
                 token_label=token_label,
                 pin=pin,
                 slot_index=slot_index,
+                iaca_write_back=iaca_write_back,
             )
         return None
 
@@ -357,7 +365,12 @@ class AskarWallet(BaseWallet):
             if key_type == PKCS11_P256:
                 if not self.pkcs11_signer:
                     raise WalletError("PKCS11 signer not configured")
-                
+
+                if method == X509 and not metadata.get("pkcs11_label") and not metadata.get("kid"):
+                    raise WalletError(
+                        "x509 method requires metadata 'pkcs11_label' or metadata 'kid'"
+                    )
+
                 identifier = seed or metadata.get("pkcs11_label") or metadata.get("kid") or did
                 if not identifier:
                     raise WalletError("PKCS11 key creation requires seed (label) or metadata 'pkcs11_label'")
@@ -376,6 +389,17 @@ class AskarWallet(BaseWallet):
             verkey_bytes = keypair.get_public_bytes()
             verkey = bytes_to_b58(verkey_bytes)
 
+            if method == X509:
+                metadata["kid"] = _derive_x509_kid(verkey_bytes)
+
+                iaca_cert = self.pkcs11_signer.create_iaca_certificate(
+                    label=metadata.get("pkcs11_label"),
+                    kid=metadata.get("kid"),
+                    public_key=verkey_bytes,
+                )
+                if iaca_cert:
+                    metadata["iaca_certificate"] = iaca_cert
+
             did = did_validation.validate_or_derive_did(
                 method, key_type, verkey_bytes, did
             )
@@ -391,35 +415,42 @@ class AskarWallet(BaseWallet):
                 )
             except AskarError as err:
                 if err.code == AskarErrorCode.DUPLICATE:
-                    if tags:
-                       # If key exists to update tags we need to fetch and replace
-                       # But insert_key failed, so we know it exists.
-                       # We can't easily "update tags" on a key without replacing it or using separate call?
-                       # Askar doesn't have explicit "set_tags".
-                       # We have access to _session.handle
-                       # Let's try to fetch and verify/update.
-                       
-                       # Actually, Wallet.assign_kid_to_key uses fetch and replace.
-                       # We can reuse that logic or implement similar here.
-                       # Let's keep it simple: if tags are provided, force update them.
-                       
-                       # Fetch check
-                       key_item = await self._session.handle.fetch_key(verkey)
-                       if key_item and tags:
-                           current_tags = key_item.tags or {}
-                           if "kid" in tags and current_tags.get("kid") != tags["kid"]:
-                               # Update the tags
-                               # We need to re-insert or replace. Askar keys are immutable?
-                               # NO, we can just update tags usually via replace or similar?
-                               # wait, insert_key overrides? No.
-                               
-                               # Looking at assign_kid_to_key (not shown but knowing askar_wrapper):
-                               # It likely does fetch and replace.
-                               
-                               # Let's call self.assign_kid_to_key if kid is present
-                               if "kid" in tags:
-                                   await self.assign_kid_to_key(verkey, tags["kid"])
-                    pass
+                    key_item = await self._session.handle.fetch_key(verkey, for_update=True)
+                    if not key_item:
+                        raise WalletError("Error fetching duplicate key")
+
+                    current_metadata = key_item.metadata or {}
+                    if isinstance(current_metadata, str):
+                        current_metadata = json.loads(current_metadata)
+
+                    updated_metadata = dict(current_metadata)
+                    updated_metadata.update(metadata)
+
+                    current_tags = key_item.tags or {}
+                    updated_tags = dict(current_tags)
+
+                    if tags and "kid" in tags:
+                        existing_kids = updated_tags.get("kid", [])
+                        existing_kids = (
+                            existing_kids
+                            if isinstance(existing_kids, list)
+                            else [existing_kids]
+                        )
+                        if tags["kid"] not in existing_kids:
+                            existing_kids.append(tags["kid"])
+                        updated_tags["kid"] = existing_kids
+
+                    if (
+                        updated_metadata != current_metadata
+                        or updated_tags != current_tags
+                    ):
+                        await self._session.handle.update_key(
+                            name=verkey,
+                            metadata=json.dumps(updated_metadata),
+                            tags=updated_tags,
+                        )
+
+                    metadata = updated_metadata
                 else:
                     raise WalletError("Error inserting key") from err
 

@@ -82,6 +82,12 @@ WEB = DIDMethod(
     rotation=True,
     holder_defined_did=HolderDefinedDid.REQUIRED,
 )
+X509 = DIDMethod(
+    name="x509",
+    key_types=[PKCS11_P256],
+    rotation=False,
+    holder_defined_did=HolderDefinedDid.NO,
+)
 PEER2 = DIDMethod(
     name="did:peer:2",
     key_types=[ED25519, X25519],
@@ -114,6 +120,7 @@ class DIDMethods:
             INDY.method_name: INDY,
             KEY.method_name: KEY,
             WEB.method_name: WEB,
+            X509.method_name: X509,
             PEER2.method_name: PEER2,
             PEER4.method_name: PEER4,
             WEBVH.method_name: WEBVH,

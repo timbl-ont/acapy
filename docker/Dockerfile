@@ -82,9 +82,10 @@ RUN apt-get update && \
 
 # Install BouncyHsm PKCS11 driver
 # Build BouncyHsm PKCS11 driver from source
+ARG BOUNCYHSM_VERSION=v2.0.1
 RUN git clone https://github.com/harrison314/BouncyHsm.git /tmp/BouncyHsm && \
     cd /tmp/BouncyHsm && \
-    git checkout v1.5.0 && \
+    git checkout ${BOUNCYHSM_VERSION} && \
     cd build_linux && \
     ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then \
@@ -96,8 +97,7 @@ RUN git clone https://github.com/harrison314/BouncyHsm.git /tmp/BouncyHsm && \
     chmod +x /usr/lib/BouncyHsm.Pkcs11.so && \
     rm -rf /tmp/BouncyHsm
 
-ENV BOUNCY_HSM_CFG_STRING="Server=10.78.135.4; Port=8765;" \
-    BOUNCY_HSM_HTTP="http://10.78.135.4:8080" \
+ENV BOUNCY_HSM_CFG_STRING="Server=10.232.73.129;Port=8765;" \
     ACAPY_PKCS11_LIB="/usr/lib/BouncyHsm.Pkcs11.so" \
     ACAPY_PKCS11_PIN="1234" \
     ACAPY_PKCS11_TOKEN="token"

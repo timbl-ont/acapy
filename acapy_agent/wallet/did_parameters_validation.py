@@ -8,6 +8,7 @@ from acapy_agent.wallet.did_method import (
     INDY,
     KEY,
     SOV,
+    X509,
     DIDMethod,
     DIDMethods,
     HolderDefinedDid,
@@ -64,5 +65,8 @@ class DIDParametersValidation:
             return bytes_to_b58(verkey[:16]) if not did else did
         elif method == INDY:
             return bytes_to_b58(hashlib.sha256(verkey).digest()[:16]) if not did else did
+        elif method == X509:
+            did_hash = hashlib.sha256(verkey).hexdigest()
+            return f"did:x509:{did_hash}"
 
         return did

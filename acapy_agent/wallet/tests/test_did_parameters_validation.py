@@ -4,6 +4,7 @@ from acapy_agent.wallet.did_method import DIDMethod, DIDMethods, HolderDefinedDi
 from acapy_agent.wallet.did_parameters_validation import DIDParametersValidation
 from acapy_agent.wallet.error import WalletError
 from acapy_agent.wallet.key_type import BLS12381G1, ED25519
+from acapy_agent.wallet.did_method import X509
 
 
 @pytest.fixture
@@ -81,3 +82,18 @@ def test_validate_or_derive_did_raises_exception_when_validating_unknown_did_met
         did_validation.validate_or_derive_did(
             unknown_method, ED25519, b"verkey", did=None
         )
+
+
+def test_validate_or_derive_did_derives_x509_did_from_public_key_hash(
+    did_methods_registry,
+):
+    did_validation = DIDParametersValidation(did_methods_registry)
+
+    did = did_validation.validate_or_derive_did(
+        X509,
+        X509.supported_key_types[0],
+        b"public-key-bytes",
+        did=None,
+    )
+
+    assert did.startswith("did:x509:")

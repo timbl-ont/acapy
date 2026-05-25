@@ -669,7 +669,16 @@ class PKCS11Group(ArgumentGroup):
             type=int,
             metavar="<slot>",
             env_var="ACAPY_PKCS11_SLOT",
-            help="Slot index for the PKCS#11 token.",
+            help="Slot ID (preferred) or index for the PKCS#11 token.",
+        )
+        parser.add_argument(
+            "--pkcs11-iaca-write-back",
+            action="store_true",
+            env_var="ACAPY_PKCS11_IACA_WRITE_BACK",
+            help=(
+                "When creating x509 metadata, write generated IACA certificates "
+                "back to the HSM as PKCS#11 certificate objects."
+            ),
         )
 
     def get_settings(self, args: Namespace) -> dict:
@@ -681,8 +690,11 @@ class PKCS11Group(ArgumentGroup):
             settings["pkcs11.pin"] = args.pkcs11_pin
         if args.pkcs11_token:
             settings["pkcs11.token"] = args.pkcs11_token
-        if args.pkcs11_slot:
+        if args.pkcs11_slot is not None:
             settings["pkcs11.slot"] = args.pkcs11_slot
+        settings["pkcs11.iaca_write_back"] = bool(
+            getattr(args, "pkcs11_iaca_write_back", False)
+        )
         return settings
 
 

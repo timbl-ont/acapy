@@ -76,6 +76,7 @@ from .did_method import (
     PEER2,
     PEER4,
     SOV,
+    X509,
     DIDMethod,
     DIDMethods,
     HolderDefinedDid,
@@ -639,6 +640,7 @@ async def wallet_create_did(request: web.BaseRequest):
             )
 
         did = body.get("options", {}).get("did")
+        metadata = body.get("metadata") or {}
         if method.holder_defined_did() == HolderDefinedDid.NO and did:
             raise web.HTTPForbidden(
                 reason=f"method {method.method_name} does not support user-defined DIDs"
@@ -647,6 +649,15 @@ async def wallet_create_did(request: web.BaseRequest):
             raise web.HTTPBadRequest(
                 reason=f"method {method.method_name} requires a user-defined DIDs"
             )
+
+        if method.method_name == X509.method_name:
+            if not metadata.get("pkcs11_label") and not metadata.get("kid"):
+                raise web.HTTPBadRequest(
+                    reason=(
+                        "method x509 requires metadata 'pkcs11_label' "
+                        "or metadata 'kid'"
+                    )
+                )
 
         wallet = session.inject_or(BaseWallet)
         if not wallet:
@@ -704,7 +715,7 @@ async def wallet_create_did(request: web.BaseRequest):
                     key_type=key_type,
                     seed=seed,
                     did=did,
-                    metadata=body.get("metadata"),
+                    metadata=metadata,
                 )
 
         except WalletError as err:

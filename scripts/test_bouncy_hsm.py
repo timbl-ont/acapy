@@ -19,19 +19,32 @@ LOGGER = logging.getLogger(__name__)
 PKCS11_LIB = os.environ.get("ACAPY_PKCS11_LIB", "/usr/lib/BouncyHsm.Pkcs11.so")
 PKCS11_TOKEN = os.environ.get("ACAPY_PKCS11_TOKEN", "token")
 PKCS11_PIN = os.environ.get("ACAPY_PKCS11_PIN", "1234")
-PKCS11_SLOT = int(os.environ.get("ACAPY_PKCS11_SLOT", "1"))
+PKCS11_SLOT = int(os.environ.get("ACAPY_PKCS11_SLOT", "2"))
+BOUNCY_HSM_CFG_STRING = os.environ.get("BOUNCY_HSM_CFG_STRING")
 KEY_LABEL = "test-key-p256"
 
 from acapy_agent.wallet.error import WalletError
 
 def test_pkcs11_signer():
     LOGGER.info("Starting PKCS11 Signer Test...")
+    LOGGER.info(
+        "PKCS11 config: lib=%s token=%s slot=%s bouncy_cfg=%s",
+        PKCS11_LIB,
+        PKCS11_TOKEN,
+        PKCS11_SLOT,
+        BOUNCY_HSM_CFG_STRING,
+    )
     
     # 1. Initialize Signer
     try:
-        signer = PKCS11Signer(lib_path=PKCS11_LIB, token_label=PKCS11_TOKEN, pin=PKCS11_PIN)
+        signer = PKCS11Signer(
+            lib_path=PKCS11_LIB,
+            token_label=PKCS11_TOKEN,
+            pin=PKCS11_PIN,
+            slot_index=PKCS11_SLOT,
+        )
     except Exception as e:
-        LOGGER.error(f"Failed to initialize signer: {e}")
+        LOGGER.exception("Failed to initialize signer: %s", e)
         return
 
     # 2. Provision or Get Public Key using PKCS11Signer
@@ -42,13 +55,13 @@ def test_pkcs11_signer():
     except WalletError:
         LOGGER.info(f"Key '{KEY_LABEL}' not found. Creating new key via PKCS11Signer...")
         try:
-             pub_bytes = signer.create_key(KEY_LABEL)
-             LOGGER.info("Key created successfully.")
+            pub_bytes = signer.create_key(KEY_LABEL)
+            LOGGER.info("Key created successfully.")
         except Exception as e:
-             LOGGER.error(f"Failed to create key: {e}")
-             return
+            LOGGER.exception("Failed to create key: %s", e)
+            return
     except Exception as e:
-        LOGGER.error(f"Failed to get public key: {e}")
+        LOGGER.exception("Failed to get public key: %s", e)
         return
 
     LOGGER.info(f"Retrieved Public Key Bytes (len={len(pub_bytes)}): {pub_bytes.hex()}")
@@ -59,7 +72,7 @@ def test_pkcs11_signer():
         signature = signer.sign(message, KEY_LABEL)
         LOGGER.info(f"Signature (len={len(signature)}): {signature.hex()}")
     except Exception as e:
-        LOGGER.error(f"Failed to sign message: {e}")
+        LOGGER.exception("Failed to sign message: %s", e)
         return
 
     # 5. Verify Signature (soft verification)

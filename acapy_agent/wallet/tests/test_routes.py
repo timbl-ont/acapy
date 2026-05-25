@@ -216,6 +216,18 @@ class TestWalletRoutes(IsolatedAsyncioTestCase):
         with self.assertRaises(test_module.web.HTTPForbidden):
             await test_module.wallet_create_did(self.request)
 
+    async def test_create_did_x509_requires_pkcs11_metadata(self):
+        self.request.json = mock.CoroutineMock(
+            return_value={
+                "method": "x509",
+                "options": {"key_type": test_module.PKCS11_P256.key_type},
+                "metadata": {},
+            }
+        )
+
+        with self.assertRaises(test_module.web.HTTPBadRequest):
+            await test_module.wallet_create_did(self.request)
+
     async def test_create_did_x(self):
         self.wallet.create_local_did.side_effect = test_module.WalletError()
         with self.assertRaises(test_module.web.HTTPBadRequest):
