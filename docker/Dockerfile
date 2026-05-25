@@ -96,11 +96,10 @@ RUN git clone https://github.com/harrison314/BouncyHsm.git /tmp/BouncyHsm && \
     chmod +x /usr/lib/BouncyHsm.Pkcs11.so && \
     rm -rf /tmp/BouncyHsm
 
-ENV BOUNCY_HSM_CFG_STRING="Server=192.168.1.136; Port=8765;" \
-    BOUNCY_HSM_HTTP="http://192.168.1.136:8080" \
+ENV BOUNCY_HSM_CFG_STRING="Server=10.78.135.4; Port=8765;" \
+    BOUNCY_HSM_HTTP="http://10.78.135.4:8080" \
     ACAPY_PKCS11_LIB="/usr/lib/BouncyHsm.Pkcs11.so" \
     ACAPY_PKCS11_PIN="1234" \
-    ACAPY_PKCS11_TOKEN="token" \
     ACAPY_PKCS11_TOKEN="token"
 
 WORKDIR $HOME
