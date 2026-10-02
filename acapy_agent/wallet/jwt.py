@@ -18,6 +18,7 @@ from ..messaging.models.base import BaseModel, BaseModelSchema
 from .base import BaseWallet
 from .default_verification_key_strategy import BaseVerificationKeyStrategy
 from .util import b64_to_bytes, bytes_to_b64
+from .x509 import X509Error, get_x5c
 
 LOGGER = logging.getLogger(__name__)
 SUPPORTED_JWT_ALGS = ("EdDSA", "ES256")
@@ -52,8 +53,13 @@ async def jwt_sign(
     payload: Mapping[str, Any],
     did: Optional[str] = None,
     verification_method: Optional[str] = None,
+    include_x5c: bool = False,
 ) -> str:
-    """Create a signed JWT given headers, payload, and signing DID or DID URL."""
+    """Create a signed JWT given headers, payload, and signing DID or DID URL.
+
+    If include_x5c is set, the X.509 certificate chain stored for the signing key is
+    added as the x5c header.
+    """
     if verification_method is None:
         if did is None:
             raise ValueError("did or verificationMethod required.")
@@ -84,6 +90,13 @@ async def jwt_sign(
             "alg": header_alg,
             "kid": verification_method,
         }
+        if include_x5c:
+            x5c = get_x5c(await wallet.get_signing_key(public_key_base58))
+            if not x5c:
+                raise X509Error(
+                    f"No X.509 certificate chain stored for key {verification_method}"
+                )
+            headers["x5c"] = x5c
         encoded_headers = dict_to_b64(headers)
         encoded_payload = dict_to_b64(payload)
 

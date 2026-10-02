@@ -158,7 +158,11 @@ class KanonWallet(BaseWallet):
 
             LOGGER.debug("Updating key with kid: %s", kid)
             await _call_askar(
-                self._session.askar_handle, "update_key", name=verkey, tags={"kid": kid}
+                self._session.askar_handle,
+                "update_key",
+                name=verkey,
+                metadata=key_entry.metadata,
+                tags={"kid": kid},
             )
             LOGGER.debug("Key updated successfully")
         except AskarError as err:

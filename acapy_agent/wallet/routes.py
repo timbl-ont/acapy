@@ -217,6 +217,17 @@ class JWSCreateSchema(OpenAPISchema):
             ),
         },
     )
+    include_x5c = fields.Bool(
+        required=False,
+        load_default=False,
+        metadata={
+            "description": (
+                "Add the X.509 certificate chain stored for the signing key as the "
+                "x5c header"
+            ),
+            "example": False,
+        },
+    )
 
 
 class SDJWSCreateSchema(JWSCreateSchema):
@@ -1133,9 +1144,17 @@ async def wallet_jwt_sign(request: web.BaseRequest):
     verification_method = body.get("verificationMethod")
     headers = body.get("headers", {})
     payload = body.get("payload", {})
+    include_x5c = body.get("include_x5c", False)
 
     try:
-        jws = await jwt_sign(context.profile, headers, payload, did, verification_method)
+        jws = await jwt_sign(
+            context.profile,
+            headers,
+            payload,
+            did,
+            verification_method,
+            include_x5c=include_x5c,
+        )
     except ValueError as err:
         raise web.HTTPBadRequest(reason="Bad did or verification method") from err
     except WalletNotFoundError as err:
@@ -1176,10 +1195,17 @@ async def wallet_sd_jwt_sign(request: web.BaseRequest):
     headers = body.get("headers", {})
     payload = body.get("payload", {})
     non_sd_list = body.get("non_sd_list", [])
+    include_x5c = body.get("include_x5c", False)
 
     try:
         sd_jws = await sd_jwt_sign(
-            context.profile, headers, payload, non_sd_list, did, verification_method
+            context.profile,
+            headers,
+            payload,
+            non_sd_list,
+            did,
+            verification_method,
+            include_x5c=include_x5c,
         )
     except ValueError as err:
         raise web.HTTPBadRequest(reason="Bad did or verification method") from err

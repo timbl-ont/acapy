@@ -6611,6 +6611,145 @@
         "tags" : [ "wallet" ]
       }
     },
+    "/wallet/keys/{multikey}/certificate" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "The Public Key Multibase format (multikey)",
+          "in" : "path",
+          "name" : "multikey",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CertificateResponse"
+                }
+              }
+            },
+            "description" : ""
+          }
+        },
+        "summary" : "Fetch the X.509 certificate chain stored for a key",
+        "tags" : [ "wallet" ]
+      },
+      "put" : {
+        "parameters" : [ {
+          "description" : "The Public Key Multibase format (multikey)",
+          "in" : "path",
+          "name" : "multikey",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "*/*" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ImportCertificateRequest"
+              }
+            }
+          },
+          "required" : false
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CertificateResponse"
+                }
+              }
+            },
+            "description" : ""
+          }
+        },
+        "summary" : "Import an X.509 certificate chain for a key",
+        "tags" : [ "wallet" ],
+        "x-codegen-request-body-name" : "body"
+      }
+    },
+    "/wallet/keys/{multikey}/csr" : {
+      "post" : {
+        "parameters" : [ {
+          "description" : "The Public Key Multibase format (multikey)",
+          "in" : "path",
+          "name" : "multikey",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "*/*" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCsrRequest"
+              }
+            }
+          },
+          "required" : false
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CreateCsrResponse"
+                }
+              }
+            },
+            "description" : ""
+          }
+        },
+        "summary" : "Create an X.509 certificate signing request (CSR) for a key",
+        "tags" : [ "wallet" ],
+        "x-codegen-request-body-name" : "body"
+      }
+    },
+    "/wallet/keys/{multikey}/self-signed-certificate" : {
+      "post" : {
+        "parameters" : [ {
+          "description" : "The Public Key Multibase format (multikey)",
+          "in" : "path",
+          "name" : "multikey",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "*/*" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateSelfSignedCertificateRequest"
+              }
+            }
+          },
+          "required" : false
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CertificateResponse"
+                }
+              }
+            },
+            "description" : ""
+          }
+        },
+        "summary" : "Create and store a self-signed X.509 certificate for a key",
+        "tags" : [ "wallet" ],
+        "x-codegen-request-body-name" : "body"
+      }
+    },
     "/wallet/sd-jwt/sign" : {
       "post" : {
         "requestBody" : {
@@ -7309,6 +7448,28 @@
       "BasicMessageModuleResponse" : {
         "type" : "object"
       },
+      "CertificateResponse" : {
+        "properties" : {
+          "certificate_chain" : {
+            "description" : "PEM encoded certificate chain, leaf certificate first",
+            "example" : "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n",
+            "type" : "string"
+          },
+          "multikey" : {
+            "description" : "The Public Key Multibase format (multikey)",
+            "example" : "zDnaeSd75MAwSRmem34MfZEzSMjQNcpWLmzkbF8Su49AuA9U2",
+            "type" : "string"
+          },
+          "x5c" : {
+            "description" : "Certificate chain as a JWS x5c header value (base64 DER, leaf first)",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "ClaimFormat" : {
         "properties" : {
           "di_vc" : {
@@ -7660,6 +7821,55 @@
         },
         "type" : "object"
       },
+      "CreateCsrRequest" : {
+        "properties" : {
+          "dns_names" : {
+            "description" : "DNS names for the subject alternative name extension",
+            "example" : [ "issuer.example.com" ],
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "emails" : {
+            "description" : "Email addresses for the subject alternative name extension",
+            "example" : [ "issuer@example.com" ],
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "subject" : {
+            "description" : "Subject distinguished name (RFC 4514)",
+            "example" : "CN=Example Issuer,O=Example Org,C=CA",
+            "type" : "string"
+          },
+          "uris" : {
+            "description" : "URIs for the subject alternative name extension",
+            "example" : [ "https://issuer.example.com" ],
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "CreateCsrResponse" : {
+        "properties" : {
+          "csr" : {
+            "description" : "PEM encoded PKCS #10 certificate signing request",
+            "example" : "-----BEGIN CERTIFICATE REQUEST-----\n...\n-----END CERTIFICATE REQUEST-----\n",
+            "type" : "string"
+          },
+          "multikey" : {
+            "description" : "The Public Key Multibase format (multikey)",
+            "example" : "zDnaeSd75MAwSRmem34MfZEzSMjQNcpWLmzkbF8Su49AuA9U2",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CreateDidIndyRequest" : {
         "properties" : {
           "features" : {
@@ -7733,6 +7943,47 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "CreateSelfSignedCertificateRequest" : {
+        "properties" : {
+          "dns_names" : {
+            "description" : "DNS names for the subject alternative name extension",
+            "example" : [ "issuer.example.com" ],
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "emails" : {
+            "description" : "Email addresses for the subject alternative name extension",
+            "example" : [ "issuer@example.com" ],
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "subject" : {
+            "description" : "Subject and issuer distinguished name (RFC 4514)",
+            "example" : "CN=Example Issuer,O=Example Org,C=CA",
+            "type" : "string"
+          },
+          "uris" : {
+            "description" : "URIs for the subject alternative name extension",
+            "example" : [ "https://issuer.example.com" ],
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "validity_days" : {
+            "description" : "Number of days the certificate is valid for",
+            "example" : 365,
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        },
+        "required" : [ "subject" ],
         "type" : "object"
       },
       "CreateWalletRequest" : {
@@ -9244,6 +9495,17 @@
       "HolderModuleResponse" : {
         "type" : "object"
       },
+      "ImportCertificateRequest" : {
+        "properties" : {
+          "certificate_chain" : {
+            "description" : "PEM encoded certificate chain, leaf certificate first. The leaf certificate must certify this key.",
+            "example" : "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n",
+            "type" : "string"
+          }
+        },
+        "required" : [ "certificate_chain" ],
+        "type" : "object"
+      },
       "IndyCredInfo" : {
         "properties" : {
           "attrs" : {
@@ -10256,6 +10518,12 @@
               "type" : "object"
             },
             "type" : "object"
+          },
+          "include_x5c" : {
+            "default" : false,
+            "description" : "Add the X.509 certificate chain stored for the signing key as the x5c header",
+            "example" : false,
+            "type" : "boolean"
           },
           "payload" : {
             "additionalProperties" : {
@@ -11976,6 +12244,12 @@
               "type" : "object"
             },
             "type" : "object"
+          },
+          "include_x5c" : {
+            "default" : false,
+            "description" : "Add the X.509 certificate chain stored for the signing key as the x5c header",
+            "example" : false,
+            "type" : "boolean"
           },
           "non_sd_list" : {
             "items" : {

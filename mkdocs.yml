@@ -100,6 +100,7 @@ nav:
     - Using W3C JSON-LD Signed Credentials: features/JsonLdCredentials.md
     - Issuing and Presenting W3C Data Integrity VCs: features/W3cCredentials.md
     - Using SD-JWTs: features/SelectiveDisclosureJWTs.md
+    - X.509 Certificates for Wallet Keys: features/X509Certificates.md
     - AnonCreds Presentation Validation: features/AnonCredsProofValidation.md
     - AnonCreds Revocation Auto Recovery: features/AnonCredsRevocationAutoRecovery.md
     - Multiple Credential Types: features/Multicredentials.md

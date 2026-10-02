@@ -2,18 +2,24 @@ import json
 from base64 import urlsafe_b64decode
 from unittest import IsolatedAsyncioTestCase
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+
 from ...resolver.did_resolver import DIDResolver
 from ...resolver.tests.test_did_resolver import MockResolver
 from ...utils.testing import create_test_profile
 from ...wallet.did_method import KEY, DIDMethods
-from ...wallet.key_type import ED25519, KeyTypes
+from ...wallet.key_type import ED25519, P256, KeyTypes
+from .. import x509
 from ..base import BaseWallet
 from ..default_verification_key_strategy import (
     BaseVerificationKeyStrategy,
     DefaultVerificationKeyStrategy,
 )
-from ..jwt import jwt_sign
+from ..jwt import b64_to_dict, jwt_sign
 from ..sd_jwt import SDJWTVerifyResult, sd_jwt_sign, sd_jwt_verify
+from ..util import b64_to_bytes
 
 
 class TestSDJWT(IsolatedAsyncioTestCase):
@@ -497,3 +503,36 @@ class TestSDJWT(IsolatedAsyncioTestCase):
                 expected_aud=expected_aud,
                 expected_nonce=expected_nonce,
             )
+
+    async def test_sign_with_x5c(self):
+        kid = "https://issuer.example.com#key-1"
+        async with self.profile.session() as session:
+            wallet = session.inject(BaseWallet)
+            key_info = await wallet.create_key(P256, kid=kid)
+            certificate = await x509.create_self_signed_certificate(
+                wallet, key_info, "CN=Issuer"
+            )
+            x5c = await x509.store_certificate_chain(wallet, key_info, [certificate])
+
+        signed = await sd_jwt_sign(
+            self.profile,
+            {"typ": "dc+sd-jwt"},
+            {"iss": "https://issuer.example.com", "given_name": "John"},
+            verification_method=kid,
+            include_x5c=True,
+        )
+        encoded_jwt = signed.split("~")[0]
+        encoded_headers, encoded_payload, encoded_sig = encoded_jwt.split(".")
+        headers = b64_to_dict(encoded_headers)
+        assert headers["x5c"] == x5c
+        assert headers["kid"] == kid
+        assert headers["typ"] == "dc+sd-jwt"
+
+        sig = b64_to_bytes(encoded_sig, urlsafe=True)
+        certificate.public_key().verify(
+            encode_dss_signature(
+                int.from_bytes(sig[:32], "big"), int.from_bytes(sig[32:], "big")
+            ),
+            f"{encoded_headers}.{encoded_payload}".encode(),
+            ec.ECDSA(hashes.SHA256()),
+        )

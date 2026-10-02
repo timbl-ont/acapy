@@ -5440,6 +5440,113 @@
         }
       }
     },
+    "/wallet/keys/{multikey}/certificate" : {
+      "get" : {
+        "tags" : [ "wallet" ],
+        "summary" : "Fetch the X.509 certificate chain stored for a key",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "multikey",
+          "in" : "path",
+          "description" : "The Public Key Multibase format (multikey)",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "",
+            "schema" : {
+              "$ref" : "#/definitions/CertificateResponse"
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "wallet" ],
+        "summary" : "Import an X.509 certificate chain for a key",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/ImportCertificateRequest"
+          }
+        }, {
+          "name" : "multikey",
+          "in" : "path",
+          "description" : "The Public Key Multibase format (multikey)",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "",
+            "schema" : {
+              "$ref" : "#/definitions/CertificateResponse"
+            }
+          }
+        }
+      }
+    },
+    "/wallet/keys/{multikey}/csr" : {
+      "post" : {
+        "tags" : [ "wallet" ],
+        "summary" : "Create an X.509 certificate signing request (CSR) for a key",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/CreateCsrRequest"
+          }
+        }, {
+          "name" : "multikey",
+          "in" : "path",
+          "description" : "The Public Key Multibase format (multikey)",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "",
+            "schema" : {
+              "$ref" : "#/definitions/CreateCsrResponse"
+            }
+          }
+        }
+      }
+    },
+    "/wallet/keys/{multikey}/self-signed-certificate" : {
+      "post" : {
+        "tags" : [ "wallet" ],
+        "summary" : "Create and store a self-signed X.509 certificate for a key",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/CreateSelfSignedCertificateRequest"
+          }
+        }, {
+          "name" : "multikey",
+          "in" : "path",
+          "description" : "The Public Key Multibase format (multikey)",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "",
+            "schema" : {
+              "$ref" : "#/definitions/CertificateResponse"
+            }
+          }
+        }
+      }
+    },
     "/wallet/sd-jwt/sign" : {
       "post" : {
         "tags" : [ "wallet" ],
@@ -6096,6 +6203,28 @@
     "BasicMessageModuleResponse" : {
       "type" : "object"
     },
+    "CertificateResponse" : {
+      "type" : "object",
+      "properties" : {
+        "certificate_chain" : {
+          "type" : "string",
+          "example" : "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n",
+          "description" : "PEM encoded certificate chain, leaf certificate first"
+        },
+        "multikey" : {
+          "type" : "string",
+          "example" : "zDnaeSd75MAwSRmem34MfZEzSMjQNcpWLmzkbF8Su49AuA9U2",
+          "description" : "The Public Key Multibase format (multikey)"
+        },
+        "x5c" : {
+          "type" : "array",
+          "description" : "Certificate chain as a JWS x5c header value (base64 DER, leaf first)",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
     "ClaimFormat" : {
       "type" : "object",
       "properties" : {
@@ -6429,6 +6558,55 @@
         }
       }
     },
+    "CreateCsrRequest" : {
+      "type" : "object",
+      "properties" : {
+        "dns_names" : {
+          "type" : "array",
+          "example" : [ "issuer.example.com" ],
+          "description" : "DNS names for the subject alternative name extension",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "emails" : {
+          "type" : "array",
+          "example" : [ "issuer@example.com" ],
+          "description" : "Email addresses for the subject alternative name extension",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "subject" : {
+          "type" : "string",
+          "example" : "CN=Example Issuer,O=Example Org,C=CA",
+          "description" : "Subject distinguished name (RFC 4514)"
+        },
+        "uris" : {
+          "type" : "array",
+          "example" : [ "https://issuer.example.com" ],
+          "description" : "URIs for the subject alternative name extension",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "CreateCsrResponse" : {
+      "type" : "object",
+      "properties" : {
+        "csr" : {
+          "type" : "string",
+          "example" : "-----BEGIN CERTIFICATE REQUEST-----\n...\n-----END CERTIFICATE REQUEST-----\n",
+          "description" : "PEM encoded PKCS #10 certificate signing request"
+        },
+        "multikey" : {
+          "type" : "string",
+          "example" : "zDnaeSd75MAwSRmem34MfZEzSMjQNcpWLmzkbF8Su49AuA9U2",
+          "description" : "The Public Key Multibase format (multikey)"
+        }
+      }
+    },
     "CreateDidIndyRequest" : {
       "type" : "object",
       "properties" : {
@@ -6497,6 +6675,47 @@
           "type" : "string",
           "example" : "z6MkgKA7yrw5kYSiDuQFcye4bMaJpcfHFry3Bx45pdWh3s8i",
           "description" : "The Public Key Multibase format (multikey)"
+        }
+      }
+    },
+    "CreateSelfSignedCertificateRequest" : {
+      "type" : "object",
+      "required" : [ "subject" ],
+      "properties" : {
+        "dns_names" : {
+          "type" : "array",
+          "example" : [ "issuer.example.com" ],
+          "description" : "DNS names for the subject alternative name extension",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "emails" : {
+          "type" : "array",
+          "example" : [ "issuer@example.com" ],
+          "description" : "Email addresses for the subject alternative name extension",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "subject" : {
+          "type" : "string",
+          "example" : "CN=Example Issuer,O=Example Org,C=CA",
+          "description" : "Subject and issuer distinguished name (RFC 4514)"
+        },
+        "uris" : {
+          "type" : "array",
+          "example" : [ "https://issuer.example.com" ],
+          "description" : "URIs for the subject alternative name extension",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "validity_days" : {
+          "type" : "integer",
+          "example" : 365,
+          "description" : "Number of days the certificate is valid for",
+          "minimum" : 1
         }
       }
     },
@@ -7912,6 +8131,17 @@
     "HolderModuleResponse" : {
       "type" : "object"
     },
+    "ImportCertificateRequest" : {
+      "type" : "object",
+      "required" : [ "certificate_chain" ],
+      "properties" : {
+        "certificate_chain" : {
+          "type" : "string",
+          "example" : "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n",
+          "description" : "PEM encoded certificate chain, leaf certificate first. The leaf certificate must certify this key."
+        }
+      }
+    },
     "IndyCredInfo" : {
       "type" : "object",
       "properties" : {
@@ -8870,6 +9100,12 @@
         "headers" : {
           "type" : "object",
           "additionalProperties" : { }
+        },
+        "include_x5c" : {
+          "type" : "boolean",
+          "example" : false,
+          "description" : "Add the X.509 certificate chain stored for the signing key as the x5c header",
+          "default" : false
         },
         "payload" : {
           "type" : "object",
@@ -10483,6 +10719,12 @@
         "headers" : {
           "type" : "object",
           "additionalProperties" : { }
+        },
+        "include_x5c" : {
+          "type" : "boolean",
+          "example" : false,
+          "description" : "Add the X.509 certificate chain stored for the signing key as the x5c header",
+          "default" : false
         },
         "non_sd_list" : {
           "type" : "array",

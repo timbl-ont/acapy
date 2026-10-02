@@ -105,6 +105,10 @@ The issuer lists neither `address` nor the subclaims of `address` in the `non_sd
 
 ```
 
+To add an X.509 certificate chain to the `x5c` header, set `"include_x5c": true` and sign
+with a P-256 key that has a stored certificate chain. See
+[X.509 Certificates for Wallet Keys](X509Certificates.md).
+
 #### Output
 
 ```bash

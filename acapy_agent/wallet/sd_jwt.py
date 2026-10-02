@@ -35,6 +35,7 @@ class SDJWTIssuerACAPy(SDJWTIssuer):
         verification_method: Optional[str] = None,
         add_decoy_claims: bool = False,
         serialization_format: str = "compact",
+        include_x5c: bool = False,
     ):
         """Initialize an SDJWTIssuerACAPy instance."""
         self._user_claims = user_claims
@@ -45,6 +46,7 @@ class SDJWTIssuerACAPy(SDJWTIssuer):
         self.headers = headers
         self.did = did
         self.verification_method = verification_method
+        self.include_x5c = include_x5c
 
         self._add_decoy_claims = add_decoy_claims
         self._serialization_format = serialization_format
@@ -57,6 +59,7 @@ class SDJWTIssuerACAPy(SDJWTIssuer):
             self.sd_jwt_payload,
             self.did,
             self.verification_method,
+            include_x5c=self.include_x5c,
         )
 
     async def issue(self) -> str:
@@ -140,6 +143,7 @@ async def sd_jwt_sign(
     non_sd_list: Optional[List] = None,
     did: Optional[str] = None,
     verification_method: Optional[str] = None,
+    include_x5c: bool = False,
 ) -> str:
     """Sign sd-jwt.
 
@@ -147,6 +151,8 @@ async def sd_jwt_sign(
     claims that can be selectively disclosable. Use this list to wrap
     selectively disclosable claims with SDObj within payload,
     create SDJWTIssuerACAPy object, and call SDJWTIssuerACAPy.issue().
+    If include_x5c is set, the X.509 certificate chain stored for the signing key
+    is added as the x5c header.
     """
     non_sd_list = non_sd_list or []
     sd_list = create_sd_list(payload, non_sd_list)
@@ -173,6 +179,7 @@ async def sd_jwt_sign(
         headers=headers,
         did=did,
         verification_method=verification_method,
+        include_x5c=include_x5c,
     ).issue()
 
 
